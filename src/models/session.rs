@@ -1,15 +1,17 @@
 #![allow(unused)]
-use serde::{Deserialize, Serialize};
-use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use rand::prelude::*;
+use serde::{Deserialize, Serialize};
+
+use crate::logger;
+use anyhow::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String,
-    pub company: String,
-    pub exp: usize
+    pub session_id: String,
+    pub exp: usize,
 }
-
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Session {
@@ -17,31 +19,32 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn new() -> Self {
+    pub fn new(sub: &str) -> Result<Self, Error> {
         // Randomness.
         let mut rng = thread_rng();
-        let mut nums: Vec<i32> = (1..50).collect();
+        let mut nums: Vec<i32> = (1..10).collect();
         let mut alphabet: Vec<char> = ('a'..='z').collect();
 
         // Shuffle contents.
-        let random_numbers = nums.shuffle(&mut rng);
-        let random_characters = alphabet.shuffle(&mut rng);
+        nums.shuffle(&mut rng);
+        alphabet.shuffle(&mut rng);
 
         let character_string = alphabet.into_iter().collect::<String>();
-        let numbers = nu
+        let numbers = nums.iter().map(|&val| val.to_string()).collect::<String>();
 
-        println!("{:?}", ses);
+        let session_id = format!("{}{}", character_string, numbers);
 
-        // let session_id = 
+        let claims = Claims {
+            sub: sub.to_owned(),
+            session_id,
+            exp: 3 * 60 * 60, // Valid for 3hrs.
+        };
 
+        // Generate token.
+        let secret = std::env::var("SECRET_KEY").expect("[SECRET_KEY] must be set.");
+        let encoding_key = EncodingKey::from_secret(secret.as_ref());
+        let token = encode(&Header::default(), &claims, &encoding_key)?;
 
-        // let claims = Claims {
-        //     sub: 
-        // };
-
-        // let token = encode(&Header::default(), &)
-        Self {
-            token: Some("".to_owned())
-        }
+        Ok(Self { token: Some(token) })
     }
 }
